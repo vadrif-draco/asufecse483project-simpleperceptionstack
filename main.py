@@ -1,13 +1,12 @@
 """
-Lane Lines Detection pipeline
-
 Usage:
-    main.py [--verbose] INPUT_PATH OUTPUT_PATH 
+    main.py [--verbose] [--debug] INPUT_PATH OUTPUT_PATH 
 
 Options:
 
 -h --help                               show this screen
---verbose                               show perspective transform, binary image, additional debug info
+--verbose                            show perspective transform, binary image
+--debug                            Enable debugging mode
 """
 
 from LaneDetector import *
@@ -25,15 +24,22 @@ def main():
 
     lanedet = LaneDetector()
     Verbose = False
+    debugging = False
 
     if args['--verbose']:
         Verbose = True
 
-    process_frame = lambda frame: lanedet.pipeline(frame,Verbose = Verbose, diagnostics=False)
+    if args['--debug']:
+        debugging = True
+
+    process_frame = lambda frame: lanedet.pipeline(frame,Verbose = Verbose, debugging=debugging)
 
     video_input = VideoFileClip(input)                          
     processed_video = video_input.fl_image(process_frame)
-    processed_video.write_videofile(output, audio=False)
+    if debugging:
+        processed_video.write_videofile(output, audio=False, logger=None)
+    else:
+        processed_video.write_videofile(output, audio=False)
 
 
 if __name__ == "__main__":

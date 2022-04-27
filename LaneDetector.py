@@ -16,7 +16,10 @@ class LaneDetector:
         self.y_mppx = 0.0291
 
         self.poly_param = None
-    
+
+        self.small_img_size = (300, 200)
+        self.small_img_x_offset = 90
+        self.small_img_y_offset = 150
 
     def get_poly_points(self, left_fit, right_fit):
         '''
@@ -267,21 +270,6 @@ class LaneDetector:
         return ret, out, np.array([left_fit, right_fit])
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     def polyfit_adapt_search(self, img, prev_poly_param, plot_result=False, debugging=False):
         '''
         Function that: 
@@ -471,19 +459,6 @@ class LaneDetector:
         return out, curr_poly_param
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     def compute_offset_from_center(self, poly_param, x_mppx):
         '''
         Computes the offset of the car from the center of the detected lane lines
@@ -613,7 +588,7 @@ class LaneDetector:
         title = ''
     
         if self.reset == True:
-            title = 'Sliding window'
+            title = 'Performing Sliding window'
             if debugging: print(title)
 
             binary = get_binary_image(warped)
@@ -628,7 +603,7 @@ class LaneDetector:
                     return img
 
         else:
-            title = 'Adaptive Search'
+            title = 'Performing Adaptive Search'
             if debugging: print(title)
 
             img_poly, self.poly_param = self.polyfit_adapt_search(warped, self.poly_param, debugging=debugging)
@@ -642,10 +617,13 @@ class LaneDetector:
         result = self.draw(img, warped, invM, self.poly_param, (left_curverad + right_curverad) / 2, offset)
 
         blended_warped_poly = cv2.addWeighted(img_poly, 0.6, warped, 1, 0)
-        ret2 = np.hstack([img_poly, blended_warped_poly])
-        ret3 = np.hstack([result, warped])
-        #ret3 = triple_split_view([result, img_poly, blended_warped_poly])
-        ret3 = np.vstack([ret3, ret2])
+        # ret2 = np.hstack([img_poly, blended_warped_poly])
+        # ret3 = np.hstack([result, warped])
+        
+        # ret3 = np.vstack([ret3, ret2])
+
+        ret3 = self.combine_images(result, img_poly, blended_warped_poly, warped)
+
         if plot_result:
             plt.figure(figsize=(20, 12))
             plt.title(title)
@@ -654,3 +632,22 @@ class LaneDetector:
             return ret3
         else:
             return result
+
+    def combine_images(self, lane_image, lines_img, lines_regions_img, lane_hotspots_img):        
+
+        small_lines = cv2.resize(lines_img, self.small_img_size)
+        small_region = cv2.resize(lines_regions_img, self.small_img_size)
+        small_hotspots = cv2.resize(lane_hotspots_img, self.small_img_size)
+        
+        res = lane_image.copy()
+        res[self.small_img_y_offset: self.small_img_y_offset + self.small_img_size[1], self.small_img_x_offset: self.small_img_x_offset + self.small_img_size[0]] = small_lines
+        
+        start_offset_y = self.small_img_y_offset 
+        start_offset_x = 2 * self.small_img_x_offset + self.small_img_size[0]
+        res[start_offset_y: start_offset_y + self.small_img_size[1], start_offset_x: start_offset_x + self.small_img_size[0]] = small_region
+        
+        start_offset_y = self.small_img_y_offset 
+        start_offset_x = 3 * self.small_img_x_offset + 2 * self.small_img_size[0]
+        res[start_offset_y: start_offset_y + self.small_img_size[1], start_offset_x: start_offset_x + self.small_img_size[0]] = small_hotspots
+        
+        return res

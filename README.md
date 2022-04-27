@@ -107,6 +107,28 @@ TBD.
 
 ## Getting Started
 
+### Prepare the environment
+
+Before you start, you need to install the following libraries:
+* MoviePy
+  ```sh
+  pip install moviepy
+  ```
+* NumPy
+  ```sh
+  pip install numpy
+  ```
+* OpenCV
+  ```sh
+  pip install opencv-python
+  ```
+* Docopt
+  ```sh
+  pip install docopt
+  ```
+
+
+
 <!-- This is an example of how you may give instructions on setting up your project locally.
 To get a local copy up and running follow these simple example steps.
 
@@ -136,12 +158,27 @@ _Below is an example of how you can instruct your audience on installing and set
    const API_KEY = 'ENTER YOUR API';
    ```
 -->
-TBD.
 
 <p align="right">(<a href="#top">back to top</a>)</p> 
 
 ## Usage
 
+### Windows
+```sh
+./shell.ps1 [--verbose] [--debug] INPUT_PATH OUTPUT_PATH 
+```
+
+### Linux/MacOS
+```sh
+python3 main.py [--verbose] [--debug] INPUT_PATH OUTPUT_PATH 
+```
+    
+
+### Options:
+
+--verbose <div style="text-align: right"> show perspective transform, binary image </div>
+
+--debug <div style="text-align: right"> Enable debugging mode </div>      
 <!-- Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
 
 _For more examples, please refer to the [Documentation](https://example.com)_
