@@ -168,8 +168,8 @@ LAB_COLORSPACE_THRESH = __lane_thresholds_colorspace(thresholds=[
 
     # [(80, 255), (127, 191), (127, 255)], # Yellows
     # [(223, 255), (31, 223), (31, 223)], # Whites
-    [(20, 255), (110, 159), (159, 215)], # Yellows
-    [(239, 255), (96, 159), (96, 159)], # Whites
+    [(20, 255), (110, 159), (159, 215)],  # Yellows
+    [(239, 255), (96, 159), (96, 159)],  # Whites
 
 ], from_BGR=cv2.COLOR_BGR2LAB, to_BGR=cv2.COLOR_LAB2BGR)
 
@@ -184,7 +184,7 @@ def color_thresholded_edges_pre(image_BGR: cv2.Mat, colorspace: __lane_threshold
     return \
     \
         cv2.Sobel(
-        # cv2.Canny(
+            # cv2.Canny(
 
             cv2.medianBlur(
 
@@ -294,7 +294,14 @@ def hough_transform_raw_pre(edge_image: cv2.Mat):
 
     )
 
-    return edges_detected
+    edges_canvas = np.zeros_like(edge_image)
+    try:
+        for edge in edges_detected:
+            cv2.line(edges_canvas, (edge[0][0], edge[0][1]), (edge[0][2], edge[0][3]), 255, 2)
+    except:
+        print("No edges found...")
+
+    return edges_detected, edges_canvas
 
 
 def edge_voting_ensemble(edge_images: Tuple[cv2.Mat], voting_threshold: int):
