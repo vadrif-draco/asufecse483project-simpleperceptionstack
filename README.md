@@ -1,6 +1,6 @@
 <!-- Much thanks to https://github.com/othneildrew/Best-README-Template for the template -->
 <!-- And to https://github.com/alexandresanlim/Badges4-README.md-Profile for the badges -->
-<img id="top" src="https://i.imgur.com/iW7JeHC.png" width="256" align="right" />
+<img id="top" src="https://i.imgur.com/iW7JeHC.png" width="200" align="right" />
 
 # Simple Perception Stack for Self-Driving Cars
 
@@ -50,21 +50,26 @@ For consistency, the lane should be marked in green and its borders in yellow an
 
 ### Milestones
 
-- [x] _**~Create repository~ (April 16th, 2022)**_
-- [x] _**~Create initial README.md~ (April 23rd, 2022)**_
+- [x] _**~~Create repository~~ (April 16th, 2022)**_
+- [x] _**~~Create initial README.md~~ (April 23rd, 2022)**_
 - [ ] Create pipeline and test it against static image samples in assets
-  - [ ] Image #1 Pass (straight_lines1.jpg)
-  - [ ] Image #2 Pass (straight_lines2.jpg)
-  - [ ] Image #3 Pass (test1.jpg)
-  - [ ] Image #4 Pass (test2.jpg)
-  - [ ] Image #5 Pass (test3.jpg)
-  - [ ] Image #6 Pass (test4.jpg)
-  - [ ] Image #7 Pass (test5.jpg)
-  - [ ] Image #8 Pass (test6.jpg)
+  - [x] straight_lines1.jpg Pass
+  - [x] straight_lines2.jpg Pass
+  - [x] test1.jpg Pass
+  - [ ] test2.jpg Pass
+  - [x] test3.jpg Pass
+  - [ ] test4.jpg Pass
+  - [x] test5.jpg Pass
+  - [x] test6.jpg Pass
+  - [ ] Extra: test7.jpg Pass
+  - [ ] Extra: test8.jpg Pass
+  - [ ] Extra: test9.jpg Pass
+  - [x] Extra: test10.jpg Pass
+  - [ ] Extra: test11.jpg Pass
 - [ ] Test pipeline against video samples in assets
-  - [ ] Video #1 Pass (project_video.mp4)
-  - [ ] Video #2 Pass (challenge_video.mp4)
-  - [ ] Bonus: Video #3 Pass (harder_challenge_video.mp4)
+  - [ ] project_video.mp4 Pass
+  - [ ] challenge_video.mp4 Pass
+  - [ ] harder_challenge_video.mp4 Pass
 - [ ] Full code clean-up and documentation with debugging
   - [ ] Show the individual image/video processing steps
   - [ ] Show any relevant statistics
@@ -78,10 +83,17 @@ For consistency, the lane should be marked in green and its borders in yellow an
   - [ ] Add/update necessary information to the <a href="#usage">Usage</a> section (how to actually play with the code)
 
 ### Random Ideas:
-- Main problem is the first frame and how to detect lanes dynamically from it... Afterwards, it'll be iterative, so no problem then
-- Could surround the detected lines by two parallel detected lines and constrain the search within them for the edges per frame, update them per frame too
-  - This could keep track of the lanes and identify left from right
-  - Also can help when either lane goes poof
+- **Main problem is the first frame** and how to detect lanes dynamically from it... Afterwards, the process should be iterative/relative
+- ~~Could surround the detected lines by two parallel detected lines and constrain the search within them for the edges per frame, update them per frame too~~
+  - ~~This could keep track of the lanes and identify left from right~~
+  - ~~Also can help when either lane goes poof~~
+- **Peeking center algorithm**
+  - If something's above it within some limit (3 pixels for example)
+  - Keep moving left or right, pixel-by-pixel until you get out of its way
+  - Deciding the direction is done by scanning left and right, closest pixel = move away from it (and commit in that direction)
+  - If you hit a pixel while going in that direction, terminate
+- **For non-initial lane detections,** use the different algorithms you have, then pick the one that overlaps best
+  - Overlapping = Their intersection / Their union (lane-wise) *OR* how many polyfit points lie within range of previous ones
 
 <!-- See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues). -->
 
