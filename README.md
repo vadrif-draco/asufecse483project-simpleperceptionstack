@@ -67,20 +67,19 @@ For consistency, the lane should be marked in green and its borders in yellow an
   - [x] Extra: test10.jpg Pass
   - [ ] Extra: test11.jpg Pass
 - [ ] Test pipeline against video samples in assets
-  - [ ] project_video.mp4 Pass
-  - [ ] challenge_video.mp4 Pass
+  - [x] project_video.mp4 Pass
+  - [x] challenge_video.mp4 Pass
   - [ ] harder_challenge_video.mp4 Pass
 - [ ] Full code clean-up and documentation with debugging
-  - [ ] Show the individual image/video processing steps
+  - [x] Show the individual image/video processing steps
   - [ ] Show any relevant statistics
-- [ ] A simple bash/shell script to call python to run the code with arguments to run in debugging mode...
-  - [ ] Example cmd for normal run: `run.sh input_path output_path`
-  - [ ] Example cmd for debug run: `run.sh input_path output_path -d`
-- [ ] Demo jupyter notebook for demonstrating the features of the pipeline
-- [ ] Upload demo result images and videos
+  - [x] Debugging mode
+- [x] A simple bash/shell script to call python to run the code with arguments to run in debugging mode...
+- [x] Demo jupyter notebook for demonstrating the features of the pipeline
+- [x] Upload demo result images and videos
 - [ ] Review README.md with respect to phase 1
   - [ ] Add/update necessary information to the <a href="#getting-started">Getting Started</a> section (how to install/run the code, etc...)
-  - [ ] Add/update necessary information to the <a href="#usage">Usage</a> section (how to actually play with the code)
+  - [x] Add/update necessary information to the <a href="#usage">Usage</a> section (how to actually play with the code)
 
 ### Random Ideas:
 - **Main problem is the first frame** and how to detect lanes dynamically from it... Afterwards, the process should be iterative/relative
@@ -183,7 +182,7 @@ python3 main.py [--verbose] [--debug] INPUT_PATH OUTPUT_PATH
 
 _For more examples, please refer to the [Documentation](https://example.com)_
  -->
- TBD.
+
  
 <p align="right">(<a href="#top">back to top</a>)</p>
 
