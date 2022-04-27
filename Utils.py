@@ -30,7 +30,7 @@ def sort_nicely(l):
     '''
     l.sort(key=alphanum_key)
     
-def plot_images(data, layout='row', cols=2, figsize=(20, 12)):
+def plotting(data, layout='row', cols=2, figsize=(20, 20)):
     '''
     Utility function for plotting images
     :param data [(ndarray, string)]: List of data to display, [(image, title)]
@@ -39,7 +39,7 @@ def plot_images(data, layout='row', cols=2, figsize=(20, 12)):
     :param figsize (number, number): Tuple indicating figure size
     '''
     rows = math.ceil(len(data) / cols)
-    f, ax = plt.subplots(figsize=figsize)
+    f, axes = plt.subplots(figsize=figsize)
     if layout == 'row':
         for idx, d in enumerate(data):
             img, title = d
@@ -71,22 +71,22 @@ def plot_images(data, layout='row', cols=2, figsize=(20, 12)):
               
                 counter += 1
 
-    return ax
+    return axes
 
-def capture_frames(video_path, frames_dir):
+def get_frames(video_path, frames_dir):
     '''
     Utility function that captures and stores video frames
     :param video_path (string): Video path
     :param frames_dir (string): Frames directory
     '''
-    cap = cv2.VideoCapture(video_path)
+    capture = cv2.VideoCapture(video_path)
 
     print('Starting frame capture...')
     
     count = 0
     success = True
     while success:
-        success, frame = cap.read()
+        success, frame = capture.read()
         cv2.imwrite(frames_dir + 'frame{:02}.jpg'.format(count), frame)
         count += 1
 
@@ -106,8 +106,35 @@ def capture_frames(video_path, frames_dir):
 # perspective Transform
 
 IMG_SHAPE = (720, 1280)
+height = 720
+width = 1280
+src = np.float32([
+        (696,455),    
+        (587,455), 
+        (235,700),  
+        (1075,700)
+    ])
 
-def get_roi(img, vertices):
+dst = np.float32([
+        (width - 350, 0),
+        (350, 0),
+        (350, height),
+        (width - 350, height)
+    ])
+def visualize_perspective(img,roi):
+        img_copy = np.copy(img)
+        roi_copy = np.copy(roi)
+        
+        cv2.polylines(img_copy, [np.int32(src)], True, (255, 0, 0), 3)
+        cv2.polylines(roi_copy, [np.int32(dst)], True, (255, 0, 0), 3)
+        
+        plotting([
+            (img_copy, 'Original Image'),
+            (roi_copy, 'Bird\'s Eye View Perspective')
+        ])
+        return True
+
+def region_of_interest(img, vertices):
     '''
     Transforms an image by preserving only the ROI represented by the
     the 'vertices' and removes the remainder of the image by setting the pixel intensity to 0
@@ -126,7 +153,7 @@ def get_roi(img, vertices):
     mask = cv2.fillPoly(mask, vertices, fill_color)
     return cv2.bitwise_and(img, mask)
     
-def warp_image(img, warp_shape, src, dst):
+def warp(img, warp_shape, src, dst):
     '''
     Performs perspective transformation (PT)
     :param img (ndarray): Image
@@ -156,83 +183,46 @@ def preprocess_image(img, visualise=False):
     :return : Pre-processed image, (PT matrix, PT inverse matrix)
     '''
     
-    ysize = img.shape[0]
-    xsize = img.shape[1]
     
     # 2. Perspective transformation
-    src = np.float32([
-        (696,455),    
-        (587,455), 
-        (235,700),  
-        (1075,700)
-    ])
 
-    dst = np.float32([
-        (xsize - 350, 0),
-        (350, 0),
-        (350, ysize),
-        (xsize - 350, ysize)
-    ])
-
-    warped, M, invM = warp_image(img, (xsize, ysize), src, dst)
+    warped, M, invM = warp(img, (width, height), src, dst)
 
     # 3. ROI crop
     vertices = np.array([
-        [200, ysize],
+        [200, height],
         [200, 0],
         [1100, 0],
-        [1100, ysize]
+        [1100, height]
     ])
 
-    roi = get_roi(warped, vertices)
+    roi = region_of_interest(warped, vertices)
 
     # 4. Visualise the transformation
     if visualise:
-        img_copy = np.copy(img)
-        roi_copy = np.copy(roi)
-        
-        cv2.polylines(img_copy, [np.int32(src)], True, (255, 0, 0), 3)
-        cv2.polylines(roi_copy, [np.int32(dst)], True, (255, 0, 0), 3)
-        
-        plot_images([
-            (img_copy, 'Original Image'),
-            (roi_copy, 'Bird\'s Eye View Perspective')
-        ])
-
+        check=visualize_perspective(img,roi)
     return roi, (M, invM)
 
 
+    
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#########################################################################
 
 ## 3. Generate Thresholded Binary image
 
-def binary_threshold(img, low, high):    
+def binary_threshold(img, lo, hi):    
     if len(img.shape) == 2:
-        output = np.zeros_like(img)
-        mask = (img >= low) & (img <= high)
+        masked_img = np.zeros_like(img)
+        mask = (img >= lo) & (img <= hi)
         
     elif len(img.shape) == 3:
-        output = np.zeros_like(img[:,:,0])
-        mask = (img[:,:,0] >= low[0]) & (img[:,:,0] <= high[0]) \
-            & (img[:,:,1] >= low[1]) & (img[:,:,1] <= high[1]) \
-            & (img[:,:,2] >= low[2]) & (img[:,:,2] <= high[2])
+        masked_img = np.zeros_like(img[:,:,0])
+        mask = (img[:,:,0] >= lo[0]) & (img[:,:,0] <= hi[0]) \
+            & (img[:,:,1] >= lo[1]) & (img[:,:,1] <= hi[1]) \
+            & (img[:,:,2] >= lo[2]) & (img[:,:,2] <= hi[2])
             
-    output[mask] = 1
-    return output
+    masked_img[mask] = 1
+    return masked_img
 
 def get_binary_image(img, visualise=False):
     """
@@ -337,27 +327,26 @@ def get_binary_image(img, visualise=False):
     adapt_binary =  adapt_yellow | adapt_white
 
     ### Ensemble Voting
-    combined = np.asarray(R_binary + lab_binary + hls_binary + hsv_binary + adapt_binary, dtype=np.uint8)
+    img_combined = np.asarray(R_binary + lab_binary + hls_binary + hsv_binary + adapt_binary, dtype=np.uint8)
 
-    combined[combined < 3] = 0
-    combined[combined >= 3] = 1
+    img_combined[img_combined < 3] = 0
+    img_combined[img_combined >= 3] = 1
 
     if visualise:
-        plot_images([
+        plotting([
             (img, 'Original'),
             (R_binary, 'R'),
             (hls_binary, 'HLS'),
             (hsv_binary, 'HSV'),
             (lab_binary, 'LAB'),
             (adapt_binary, 'Adaptive Thresh'),
-            (combined, 'Combined'),
+            (img_combined, 'Combined'),
 #             (hls_white, 'hls_white'),
 #             (hls_yellow, 'hls yellow'),
 #             (lab_white, 'lab white'),
 #             (lab_yellow, 'lab yello'),
         ], figsize=(32, 42))
 
-    return  combined
-
+    return  img_combined
 
 
