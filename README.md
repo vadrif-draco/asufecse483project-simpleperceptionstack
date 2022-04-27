@@ -67,19 +67,20 @@ For consistency, the lane should be marked in green and its borders in yellow an
   - [x] Extra: test10.jpg Pass
   - [ ] Extra: test11.jpg Pass
 - [ ] Test pipeline against video samples in assets
-  - [x] project_video.mp4 Pass
-  - [x] challenge_video.mp4 Pass
+  - [ ] project_video.mp4 Pass
+  - [ ] challenge_video.mp4 Pass
   - [ ] harder_challenge_video.mp4 Pass
 - [ ] Full code clean-up and documentation with debugging
-  - [x] Show the individual image/video processing steps
+  - [ ] Show the individual image/video processing steps
   - [ ] Show any relevant statistics
-  - [x] Debugging mode
-- [x] A simple bash/shell script to call python to run the code with arguments to run in debugging mode...
-- [x] Demo jupyter notebook for demonstrating the features of the pipeline
-- [x] Upload demo result images and videos
+- [ ] A simple bash/shell script to call python to run the code with arguments to run in debugging mode...
+  - [ ] Example cmd for normal run: `run.sh input_path output_path`
+  - [ ] Example cmd for debug run: `run.sh input_path output_path -d`
+- [ ] Demo jupyter notebook for demonstrating the features of the pipeline
+- [ ] Upload demo result images and videos
 - [ ] Review README.md with respect to phase 1
   - [ ] Add/update necessary information to the <a href="#getting-started">Getting Started</a> section (how to install/run the code, etc...)
-  - [x] Add/update necessary information to the <a href="#usage">Usage</a> section (how to actually play with the code)
+  - [ ] Add/update necessary information to the <a href="#usage">Usage</a> section (how to actually play with the code)
 
 ### Random Ideas:
 - **Main problem is the first frame** and how to detect lanes dynamically from it... Afterwards, the process should be iterative/relative
@@ -163,6 +164,8 @@ _Below is an example of how you can instruct your audience on installing and set
 ## Usage
 
 ### Windows
+#### Note: Run this script in Anaconda Prompt **powershell**
+#### File paths are relative to script location
 ```sh
 ./shell.ps1 [--verbose] [--debug] INPUT_PATH OUTPUT_PATH 
 ```
@@ -174,16 +177,20 @@ python3 main.py [--verbose] [--debug] INPUT_PATH OUTPUT_PATH
     
 
 ### Options:
+```sh
+--verbose
+``` 
+<p align="right"> show perspective transform, binary image </p>
 
---verbose <div style="text-align: right"> show perspective transform, binary image </div>
-
---debug <div style="text-align: right"> Enable debugging mode </div>      
+```sh
+--debug
+``` 
+ <p align="right">Enable debugging mode</p> 
 <!-- Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
 
 _For more examples, please refer to the [Documentation](https://example.com)_
  -->
 
- 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Contributing
