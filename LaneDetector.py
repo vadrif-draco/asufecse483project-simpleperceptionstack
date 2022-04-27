@@ -41,12 +41,12 @@ class LaneDetector:
         
         return plot_xleft.astype(int), plot_yleft.astype(int), plot_xright.astype(int), plot_yright.astype(int)
                     
-    def check_validity(self, left_fit, right_fit, diagnostics=False):
+    def check_validity(self, left_fit, right_fit, debugging=False):
         '''
         Determine the validity of lane lines represented by a set of second order polynomial coefficients 
         :param left_fit (ndarray): Coefficients for the 2nd order polynomial that defines the left lane line
         :param right_fit (ndarray): Coefficients for the 2nd order polynomial that defines the right lane line
-        :param diagnostics (boolean): Boolean flag for logging
+        :param debugging (boolean): Boolean flag for logging
         : return (boolean)
         '''
         
@@ -86,7 +86,7 @@ class LaneDetector:
         if (x1_diff < min_dist_y1) | (x1_diff > max_dist_y1) | \
             (x2_diff < min_dist_y2) | (x2_diff > max_dist_y2) | \
             (x3_diff < min_dist_y3) | (x3_diff > max_dist_y3):
-            if diagnostics:
+            if debugging:
                 print("Violated distance criterion: " +
                     "x1_diff == {:.2f}, x2_diff == {:.2f}, x3_diff == {:.2f}".format(x1_diff, x2_diff, x3_diff))
             return False
@@ -104,25 +104,25 @@ class LaneDetector:
         norm1 = abs(y1left_dx - y1right_dx)
         norm2 = abs(y3left_dx - y3right_dx)
         
-        # if diagnostics: print( norm1, norm2)
+        # if debugging: print( norm1, norm2)
 
         # Define the L1 norm threshold
         thresh = 0.6 #0.58 
         if (norm1 >= thresh) | (norm2 >= thresh):
-            if diagnostics:
+            if debugging:
                 print("Violated tangent criterion: " +
                     "norm1 == {:.3f}, norm2 == {:.3f} (thresh == {}).".format(norm1, norm2, thresh))
                 return False
         
         return True
 
-    def polyfit_sliding_window(self, binary, lane_width_px=578, visualise=False, diagnostics=False):
+    def polyfit_sliding_window(self, binary, lane_width_px=578, plot_result=False, debugging=False):
         '''
         Detect lane lines in a thresholded binary image using the sliding window technique
         :param binary (ndarray): Thresholded binary image
         :param lane_width_px (int): Average lane line width (in px) for the warped image 
         computed empirically
-        :param visualise (boolean): Boolean flag for visualisation
+        :param plot_result (boolean): Boolean flag for visualisation
         :param diagnositics (boolean): Boolean flag for logging
         '''
         
@@ -154,11 +154,9 @@ class LaneDetector:
         leftx_base = np.argmax(histogram[:midpoint])
         rightx_base = np.argmax(histogram[midpoint:]) + midpoint
         
-        if visualise:
-            plotting([(binary, 'Binary')])
-            plt.plot(histogram, 'm', linewidth=4.0)
-            plt.plot((midpoint, midpoint), (0, self.IMG_SHAPE[0]), 'c')
-            plt.plot((0, self.IMG_SHAPE[1]), (cutoff, cutoff), 'c')
+        if plot_result:
+            plotting([(binary, 'Histogram')])
+            plt.plot(histogram, 'b', linewidth=4.0)
 
         out = np.dstack((binary, binary, binary)) * 255
 
@@ -234,7 +232,7 @@ class LaneDetector:
             right_fit = np.polyfit(righty, rightx, 2)
         
         # Validate detected lane lines
-        valid = self.check_validity(left_fit, right_fit, diagnostics=diagnostics)
+        valid = self.check_validity(left_fit, right_fit, debugging=debugging)
     
         if not valid:
             # If the detected lane lines are NOT valid:
@@ -243,7 +241,7 @@ class LaneDetector:
             # 2. Else, if cache is empty, return 
             
             if len(self.cache) == 0:
-                if diagnostics: print('WARNING: Unable to detect lane lines in this frame.')
+                if debugging: print('WARNING: Unable to detect lane lines in this frame.')
                 return False, np.array([]), np.array([])
             
             avg_params = np.mean(self.cache, axis=0)
@@ -253,8 +251,8 @@ class LaneDetector:
         plot_xleft, plot_yleft, plot_xright, plot_yright = self.get_poly_points(left_fit, right_fit)
 
         # Color the detected pixels for each lane line
-        out[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-        out[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [255, 10, 255]
+        out[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 255, 0]
+        out[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [255, 255, 255]
 
         left_poly_pts = np.array([np.transpose(np.vstack([plot_xleft, plot_yleft]))])
         right_poly_pts = np.array([np.transpose(np.vstack([plot_xright, plot_yright]))])
@@ -263,8 +261,8 @@ class LaneDetector:
         cv2.polylines(out, np.int32([left_poly_pts]), isClosed=False, color=(200,255,155), thickness=4)
         cv2.polylines(out, np.int32([right_poly_pts]), isClosed=False, color=(200,255,155), thickness=4)
 
-        if visualise:
-            plotting([(out, 'Out')], figsize=(20, 40))
+        if plot_result:
+            plotting([(out, 'Sliding Window')], figsize=(20, 40))
             
         return ret, out, np.array([left_fit, right_fit])
 
@@ -284,7 +282,7 @@ class LaneDetector:
 
 
 
-    def polyfit_adapt_search(self, img, prev_poly_param, visualise=False, diagnostics=False):
+    def polyfit_adapt_search(self, img, prev_poly_param, plot_result=False, debugging=False):
         '''
         Function that: 
         1. Uses the sliding window technique to perform incremental localised adaptive threhsolding
@@ -293,8 +291,8 @@ class LaneDetector:
         than performing a blind search
         :param img (ndarray): Warped image
         :param prev_poly_param (ndarray): Polynomial coefficients of the previously detected lane lines
-        :param visualise (boolean): Boolean flag for visualisation
-        :param diagnostics (boolean): Boolean flag for logging
+        :param plot_result (boolean): Boolean flag for visualisation
+        :param debugging (boolean): Boolean flag for logging
         : return (ndarray, ndarray): 3 channel image with the newly detected lane lines, current polynomial coefficients
         '''
         
@@ -333,11 +331,11 @@ class LaneDetector:
 
             img_win_left = img[win_y_low:win_y_high, win_xleft_low:win_xleft_high,:]
             binary[win_y_low:win_y_high, win_xleft_low:win_xleft_high] = \
-                get_binary_image(img_win_left, visualise=False)
+                get_binary_image(img_win_left, plot_result=False)
 
             img_win_right = img[win_y_low:win_y_high, win_xright_low:win_xright_high, :]
             binary[win_y_low:win_y_high, win_xright_low:win_xright_high] = \
-                get_binary_image(img_win_right, visualise=False)
+                get_binary_image(img_win_right, plot_result=False)
 
             # Given that we only keep the points/values for a line that lie within the image
             # (see 'self.get_poly_points'), the overall length and consequently number of points (i.e. x-values
@@ -354,7 +352,7 @@ class LaneDetector:
             if len(idxs) != 0:
                 rightx_current = int(plot_xright[idxs[0]])
 
-            if visualise:
+            if plot_result:
                 left_pts = np.array([np.transpose(np.vstack([plot_xleft, plot_yleft]))])
                 right_pts = np.array([np.transpose(np.vstack([plot_xright, plot_yright]))])
                 
@@ -417,14 +415,14 @@ class LaneDetector:
         if len(leftx) > min_lane_pts:
             left_fit = np.polyfit(lefty, leftx, 2)
         else:
-            if diagnostics: print('WARNING: Less than {} pts detected for the left lane. {}'.format(min_lane_pts, len(leftx)))
+            if debugging: print('WARNING: Less than {} pts detected for the left lane. {}'.format(min_lane_pts, len(leftx)))
 
         if len(rightx) > min_lane_pts:
             right_fit = np.polyfit(righty, rightx, 2)
         else:
-            if diagnostics: print('WARNING: Less than {} pts detected for the right lane. {}'.format(min_lane_pts, len(rightx)))
+            if debugging: print('WARNING: Less than {} pts detected for the right lane. {}'.format(min_lane_pts, len(rightx)))
             
-        valid = self.check_validity(left_fit, right_fit, diagnostics=diagnostics)
+        valid = self.check_validity(left_fit, right_fit, debugging=debugging)
 
         # Perform smoothing via moving average
         if valid:
@@ -447,7 +445,7 @@ class LaneDetector:
 
         # Color the lane line pixels
         out[lefty, leftx] = [255, 0, 0]
-        out[righty, rightx] = [255, 10, 255]
+        out[righty, rightx] = [255, 255, 255]
 
         left_window1 = np.array([np.transpose(np.vstack([plot_xleft - margin, plot_yleft]))])
         left_window2 = np.array([np.flipud(np.transpose(np.vstack([plot_xleft + margin, plot_yleft])))])
@@ -604,7 +602,7 @@ class LaneDetector:
 
         return out
 
-    def pipeline(self, img, Verbose=True, visualise=False, diagnostics=False):
+    def pipeline(self, img, Verbose=True, plot_result=False, debugging=False):
 
         # global poly_param # Important for successive calls to the pipeline
 
@@ -616,12 +614,12 @@ class LaneDetector:
     
         if self.reset == True:
             title = 'Sliding window'
-            if diagnostics: print(title)
+            if debugging: print(title)
 
             binary = get_binary_image(warped)
-            ret, img_poly, self.poly_param = self.polyfit_sliding_window(binary, diagnostics=diagnostics)
+            ret, img_poly, self.poly_param = self.polyfit_sliding_window(binary, debugging=debugging)
             if ret:
-                if diagnostics: print('Success!')
+                if debugging: print('Success!')
                 self.reset = False
                 self.cache = np.array([self.poly_param])
             else:
@@ -631,11 +629,11 @@ class LaneDetector:
 
         else:
             title = 'Adaptive Search'
-            if diagnostics: print(title)
+            if debugging: print(title)
 
-            img_poly, self.poly_param = self.polyfit_adapt_search(warped, self.poly_param, diagnostics=diagnostics)
+            img_poly, self.poly_param = self.polyfit_adapt_search(warped, self.poly_param, debugging=debugging)
             if self.attempts == max_attempts:
-                if diagnostics: print('Resetting...')
+                if debugging: print('Resetting...')
                 self.reset = True
                 self.attempts = 0
 
@@ -648,7 +646,7 @@ class LaneDetector:
         ret3 = np.hstack([result, warped])
         #ret3 = triple_split_view([result, img_poly, blended_warped_poly])
         ret3 = np.vstack([ret3, ret2])
-        if visualise:
+        if plot_result:
             plt.figure(figsize=(20, 12))
             plt.title(title)
             plt.imshow(ret3)

@@ -10,25 +10,8 @@ import math
 
 
 ### Utility Functions
+IMG_SHAPE = (720, 1280)
 
-def tryint(s):
-    try:
-        return int(s)
-    except:
-        return s
-     
-def alphanum_key(s):
-    ''' 
-    Turn a string into a list of string and number chunks.
-    E.g. "z23a" -> ["z", 23, "a"]
-    '''
-    return [tryint(c) for c in re.split('([0-9]+)', s)]
-
-def sort_nicely(l):
-    ''' 
-    Sort the given list in the way that humans expect.
-    '''
-    l.sort(key=alphanum_key)
     
 def plotting(data, layout='row', cols=2, figsize=(20, 20)):
     '''
@@ -92,47 +75,21 @@ def get_frames(video_path, frames_dir):
 
     print('Completed!')
     
-
-
-
-
-
-
-
-
-
-
-
 # perspective Transform
 
-IMG_SHAPE = (720, 1280)
-height = 720
-width = 1280
-src = np.float32([
-        (696,455),    
-        (587,455), 
-        (235,700),  
-        (1075,700)
-    ])
 
-dst = np.float32([
-        (width - 350, 0),
-        (350, 0),
-        (350, height),
-        (width - 350, height)
+def visualize_perspective(src,dst,img,roi):
+    img_copy = np.copy(img)
+    roi_copy = np.copy(roi)
+    
+    cv2.polylines(img_copy, [np.int32(src)], True, (0, 0, 255), 3)
+    cv2.polylines(roi_copy, [np.int32(dst)], True, (0, 0, 255), 3)
+    
+    plotting([
+        (img_copy, 'Original Image'),
+        (roi_copy, 'Perspective Transform')
     ])
-def visualize_perspective(img,roi):
-        img_copy = np.copy(img)
-        roi_copy = np.copy(roi)
-        
-        cv2.polylines(img_copy, [np.int32(src)], True, (255, 0, 0), 3)
-        cv2.polylines(roi_copy, [np.int32(dst)], True, (255, 0, 0), 3)
-        
-        plotting([
-            (img_copy, 'Original Image'),
-            (roi_copy, 'Bird\'s Eye View Perspective')
-        ])
-        return True
+    return True
 
 def region_of_interest(img, vertices):
     '''
@@ -171,7 +128,7 @@ def warp(img, warp_shape, src, dst):
     warped = cv2.warpPerspective(img, M, warp_shape, flags=cv2.INTER_LINEAR)
     return warped, M, invM
 
-def preprocess_image(img, visualise=False):
+def preprocess_image(img, plot_result=False):
     '''
     Pre-processes an image. Steps include:
     1. Distortion correction
@@ -179,10 +136,25 @@ def preprocess_image(img, visualise=False):
     3. ROI crop
     
     :param img (ndarray): Original Image
-    :param visualise (boolean): Boolean flag for visualisation
+    :param plot_result (boolean): Boolean flag for visualisation
     :return : Pre-processed image, (PT matrix, PT inverse matrix)
     '''
-    
+    height = 720
+    width = 1280
+    src = np.float32([
+            (696,455),    
+            (587,455), 
+            (235,700),  
+            (1075,700)
+        ])
+
+    dst = np.float32([
+            (width - 350, 0),
+            (350, 0),
+            (350, height),
+            (width - 350, height)
+        ])
+
     
     # 2. Perspective transformation
 
@@ -198,9 +170,9 @@ def preprocess_image(img, visualise=False):
 
     roi = region_of_interest(warped, vertices)
 
-    # 4. Visualise the transformation
-    if visualise:
-        check=visualize_perspective(img,roi)
+    # 4. plot_result the transformation
+    if plot_result:
+        check=visualize_perspective(src,dst,img,roi)
     return roi, (M, invM)
 
 
@@ -224,13 +196,13 @@ def binary_threshold(img, lo, hi):
     masked_img[mask] = 1
     return masked_img
 
-def get_binary_image(img, visualise=False):
+def get_binary_image(img, plot_result=False):
     """
     Generate a thresholded binary image using transforms from an ensemble of color spaces: 
     LAB (Yellow), HSV (Yellow + White), HLS (Yellow + White), RGB (White) and 
     Adaptive Thresholding ()
     :param img (ndarray): Warped image
-    :param visualise (boolean): Boolean flag for visualisation
+    :param plot_result (boolean): Boolean flag for visualisation
     :return (ndarray): Thresholded binary image
     """
     
@@ -332,7 +304,7 @@ def get_binary_image(img, visualise=False):
     img_combined[img_combined < 3] = 0
     img_combined[img_combined >= 3] = 1
 
-    if visualise:
+    if plot_result:
         plotting([
             (img, 'Original'),
             (R_binary, 'R'),
@@ -341,10 +313,6 @@ def get_binary_image(img, visualise=False):
             (lab_binary, 'LAB'),
             (adapt_binary, 'Adaptive Thresh'),
             (img_combined, 'Combined'),
-#             (hls_white, 'hls_white'),
-#             (hls_yellow, 'hls yellow'),
-#             (lab_white, 'lab white'),
-#             (lab_yellow, 'lab yello'),
         ], figsize=(32, 42))
 
     return  img_combined
