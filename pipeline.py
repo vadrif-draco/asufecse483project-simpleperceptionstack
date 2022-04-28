@@ -20,7 +20,7 @@ def __pipeline_preprocesses(frame_BGR):
 
     HLS_color_thresholded_edges, _, _ = prep.color_thresholded_edges_pre(frame_BGR, prep.HLS_COLORSPACE_THRESH)
     LAB_color_thresholded_edges, _, _ = prep.color_thresholded_edges_pre(frame_BGR, prep.LAB_COLORSPACE_THRESH)
-    HLS_S_thresholded_adaptive = prep.adaptive_thresholding_pre(frame_HLS_S)
+    # HLS_S_thresholded_adaptive = prep.adaptive_thresholding_pre(frame_HLS_S)
     LS_hybrid_thresholded_adaptive = prep.adaptive_thresholding_pre(frame_LS_hybrid)
     VS_hybrid_thresholded_adaptive = prep.adaptive_thresholding_pre(frame_VS_hybrid)
     HLS_L_sobel_thresh, _ = prep.sobel_pre(frame_HLS_S, (1, 3), (50, 150))
@@ -30,10 +30,10 @@ def __pipeline_preprocesses(frame_BGR):
     image_inv_BLACKHAT_thresholded, _, _ = prep.morph_inv_black_hat_pre(frame_BGR)
     raw_canny = prep.canny_raw_pre(frame_GRAY)
 
+    # HLS_S_thresholded_adaptive,\
     return\
         HLS_color_thresholded_edges,\
         LAB_color_thresholded_edges,\
-        HLS_S_thresholded_adaptive,\
         LS_hybrid_thresholded_adaptive,\
         VS_hybrid_thresholded_adaptive,\
         HLS_L_sobel_thresh,\
@@ -44,83 +44,79 @@ def __pipeline_preprocesses(frame_BGR):
         raw_canny,
 
 
-def __pipeline_voting_ensemble(preprocesses, voting_threshold: int = 4):
+# def __pipeline_score(previous_lane_data: lane.lane_data, next_lane_data: lane.lane_data):
 
-    voting_ensemble_result = prep.edge_voting_ensemble(preprocesses, voting_threshold)
-    voting_ensemble_edges, voting_ensemble_edges_canvas = prep.hough_transform_raw_pre(voting_ensemble_result)
-    try:
-        for edge in voting_ensemble_edges:
-            cv2.line(voting_ensemble_edges_canvas,
-                     (edge[0][0], edge[0][1]),
-                     (edge[0][2], edge[0][3]),
-                     255,
-                     2)
-        return voting_ensemble_edges_canvas
-    except: return None
+#     union = 0
+#     intersection = 0
+#     for y in range(0, next_lane_data.lane_height):
+#         for x in range(0, next_lane_data.lane_width):
+#             match_next = (
 
+#                 x > next_lane_data.left_lane_polyfit_pts[y]
+#                 and
+#                 x < next_lane_data.right_lane_polyfit_pts[y]
 
-def __pipeline_score(previous_lane_data: lane.lane_data, next_lane_data: lane.lane_data):
+#             )
+#             match_prev = (
 
-    union = 0
-    intersection = 0
-    for y in range(0, next_lane_data.lane_height):
-        for x in range(0, next_lane_data.lane_width):
-            match_next = (
+#                 x > previous_lane_data.left_lane_polyfit_pts[y]
+#                 and
+#                 x < previous_lane_data.right_lane_polyfit_pts[y]
 
-                x > next_lane_data.left_lane_polyfit_pts[y]
-                and
-                x < next_lane_data.right_lane_polyfit_pts[y]
+#             )
+#             union += (match_next or match_prev)
+#             intersection += (match_next and match_prev)
 
-            )
-            match_prev = (
-
-                x > previous_lane_data.left_lane_polyfit_pts[y]
-                and
-                x < previous_lane_data.right_lane_polyfit_pts[y]
-
-            )
-            union += (match_next or match_prev)
-            intersection += (match_next and match_prev)
-
-    return ((intersection / union), next_lane_data)
+#     return ((intersection / union) if union != 0 and intersection != 0 else inf, next_lane_data)
 
 
-def get_next_lane(previous_lane_data: lane.lane_data, frame_BGR: cv2.Mat, skycutoff, hoodcutoff, debugging=False):
+##################################################################################################
 
-    edges_canvas_width = np.shape(frame_BGR[skycutoff:hoodcutoff])[1]
-    edges_canvas_height = np.shape(frame_BGR[skycutoff:hoodcutoff])[0]
 
-    left_ROI, right_ROI = lane.extract_separate_ROIs(previous_lane_data)
-    next_left_lane_mask = np.zeros((previous_lane_data.lane_height, previous_lane_data.lane_width), dtype=np.uint8)
-    next_right_lane_mask = np.zeros((previous_lane_data.lane_height, previous_lane_data.lane_width), dtype=np.uint8)
+# def __pipeline_score(previous_lane_data: lane.lane_data, next_lane_data: lane.lane_data):
 
-    for y, pair in enumerate(left_ROI):
-        for x in range(pair[0], pair[1]):
-            next_left_lane_mask[y][x] = 255
 
-    for y, pair in enumerate(right_ROI):
-        for x in range(pair[0], pair[1]):
-            next_right_lane_mask[y][x] = 255
+#     score = [0, 0]
+#     for y in range(0, next_lane_data.lane_height):
+#         score[0] += abs(previous_lane_data.left_lane_polyfit_pts[y] - next_lane_data.left_lane_polyfit_pts[y])
+#         score[1] += abs(previous_lane_data.right_lane_polyfit_pts[y] - next_lane_data.right_lane_polyfit_pts[y])
 
-    next_lane_candidates = __pipeline_preprocesses(frame_BGR[skycutoff:hoodcutoff])
+#     return score
 
-    candidate_lane_data_overlap_scores = []
+
+##################################################################################################
+
+
+def __pipeline_lanes_score(previous_lane_data: lane.lane_data, next_lane_candidates: list[cv2.Mat],
+                           left_lane_mask, right_lane_mask):
+
+    candidates_scored = []
     for candidate in next_lane_candidates:
 
+        # FIXME: Hough is too harsh, but I need its guidance nevertheless
         _, candidate_edges_canvas = prep.hough_transform_raw_pre(candidate)
+        # candidate_edges_canvas = candidate
 
-        candidate_edges_canvas_left_lane = cv2.bitwise_and(candidate_edges_canvas, next_left_lane_mask)
-        candidate_edges_canvas_left_lane_pts = np.argwhere(candidate_edges_canvas_left_lane == 255)
+        candidate_edges_canvas_left_lane = cv2.bitwise_and(candidate_edges_canvas, left_lane_mask)
+        candidate_edges_canvas_left_lane_pts = np.argwhere(candidate_edges_canvas_left_lane != 0)
+        if candidate_edges_canvas_left_lane_pts.size == 0: continue
+            # placeholder_canvas = np.zeros_like(candidate_edges_canvas)
+            # placeholder_canvas[:] = 127
+            # return [99999, None, placeholder_canvas]
 
-        candidate_edges_canvas_right_lane = cv2.bitwise_and(candidate_edges_canvas, next_right_lane_mask)
-        candidate_edges_canvas_right_lane_pts = np.argwhere(candidate_edges_canvas_right_lane == 255)
+        candidate_edges_canvas_right_lane = cv2.bitwise_and(candidate_edges_canvas, right_lane_mask)
+        candidate_edges_canvas_right_lane_pts = np.argwhere(candidate_edges_canvas_right_lane != 0)
+        if candidate_edges_canvas_right_lane_pts.size == 0: continue
+            # placeholder_canvas = np.zeros_like(candidate_edges_canvas)
+            # placeholder_canvas[:] = 127
+            # return [99999, None, placeholder_canvas]
 
-        polyfit_range = np.linspace(0, edges_canvas_height - 1, edges_canvas_height)
+        polyfit_range = np.linspace(0, previous_lane_data.lane_height - 1, previous_lane_data.lane_height)
 
-        next_lane_data = lane.lane_data(
+        candidate_data = lane.lane_data(
 
-            lane_height=edges_canvas_height,
-            lane_width=edges_canvas_width,
+            lane_height=previous_lane_data.lane_height,
+            lane_width=previous_lane_data.lane_width,
             l_pts=candidate_edges_canvas_left_lane_pts,
             r_pts=candidate_edges_canvas_right_lane_pts,
             range_poly=polyfit_range,
@@ -140,77 +136,324 @@ def get_next_lane(previous_lane_data: lane.lane_data, frame_BGR: cv2.Mat, skycut
             ),
         )
 
-        candidate_lane_data_overlap_scores.append(__pipeline_score(previous_lane_data, next_lane_data))
+        score = [0, 0]
+        for y in range(0, previous_lane_data.lane_height):
+            score[0] += abs(previous_lane_data.left_lane_polyfit_pts[y] - candidate_data.left_lane_polyfit_pts[y])
+            score[1] += abs(previous_lane_data.right_lane_polyfit_pts[y] - candidate_data.right_lane_polyfit_pts[y])
 
-    # TODO: Get max score, if higher than some arbitrary ratio, go on with it, if not use ensemble
-    best_candidate = max(candidate_lane_data_overlap_scores, key=lambda c: c[0])[1]
+        candidates_scored.append([score, candidate_data, candidate_edges_canvas])
 
-    next_lane_canvas = best_candidate.draw(frame_BGR, skycutoff, hoodcutoff, debugging)
-
-    return next_lane_data, next_lane_canvas
+    return candidates_scored
 
 
-def run_pipeline(width, height, input_path, output_path, debugging=False):
+def get_next_lane(previous_lane_data: lane.lane_data, frame_BGR: cv2.Mat, skycutoff, hoodcutoff, debugging):
 
-    if not os.path.exists(input_path): print(f"Sorry, the provided input path ({input_path}) does not exist."); return
-    print(f"Loading input stream frames from ({os.path.abspath(input_path)}), please wait...")
+    left_ROI, right_ROI = previous_lane_data.extract_ROIs()
+    left_lane_mask = previous_lane_data.extract_mask(left_ROI)
+    right_lane_mask = previous_lane_data.extract_mask(right_ROI)
+    lane_masks_intersection = cv2.bitwise_and(left_lane_mask, right_lane_mask)
+    left_lane_mask = cv2.bitwise_xor(left_lane_mask, lane_masks_intersection)
+    right_lane_mask = cv2.bitwise_xor(right_lane_mask, lane_masks_intersection)
 
-    frames_BGR = macros.load_stream(input_path, frame_size=(width, height))
+    next_lane_candidates = __pipeline_preprocesses(frame_BGR[skycutoff:hoodcutoff])
 
-    if not os.path.exists(output_path): os.makedirs(output_path)
-    print(f"Saving output stream frames into ({os.path.abspath(output_path)})...")
+    candidates_scored = __pipeline_lanes_score(previous_lane_data, next_lane_candidates,
+                                               left_lane_mask, right_lane_mask)
 
-    # No need to recalculate cutoffs every frame, just do it once for the first
-    HOODCUTOFF, _ = prep.get_hood_cutoff(frames_BGR[0])
-    SKYCUTOFF, _, _ = prep.get_sky_cutoff(frames_BGR[0][:HOODCUTOFF], (1, 3))
+    best_candidate_score_left = min(candidates_scored, key=lambda c: c[0][0])
+    best_candidate_score_right = min(candidates_scored, key=lambda c: c[0][1])
 
-    detection_ready_frame = __pipeline_voting_ensemble(__pipeline_preprocesses(frames_BGR[0][SKYCUTOFF:HOODCUTOFF]))
+    try:
+
+        get_next_lane.best_candidate_score_left_memory = get_next_lane.best_candidate_score_left_memory[1:]
+        get_next_lane.best_candidate_score_left_memory.append(best_candidate_score_left[0][0])
+
+        get_next_lane.best_candidate_score_right_memory = get_next_lane.best_candidate_score_right_memory[1:]
+        get_next_lane.best_candidate_score_right_memory.append(best_candidate_score_right[0][1])
+
+    except AttributeError:
+
+        get_next_lane.best_candidate_score_left_memory = [1000] * 5
+        get_next_lane.best_candidate_score_right_memory = [1000] * 5
+
+    # TODO: If best score is below some threshold (1.25x w.r.t memory average sounds good)...
+    # ...go ahead with ensemble, in increasing voting threshold order
+    # If something gets a better score (that is below threshold), take it obviously lol
+    # However if not, just re-use previous lane data
+    
+    # use_previous = False
+
+    # if best_candidate_score_left[0][0] > 1.25 * np.mean(get_next_lane.best_candidate_score_left_memory) or \
+    #         best_candidate_score_right[0][1] > 1.25 * np.mean(get_next_lane.best_candidate_score_right_memory):
+
+    #     voting_ensemble_candidates = []
+    #     for i in range(len(next_lane_candidates)):
+    #         voting_ensemble_candidates.append(prep.edge_voting_ensemble(next_lane_candidates, i))
+
+    #     voting_ensemble_candidates_scored = __pipeline_lanes_score(previous_lane_data, next_lane_candidates,
+    #                                                                left_lane_mask, right_lane_mask)
+
+    #     best_voting_ensemble_candidate_score_left = min(voting_ensemble_candidates_scored, key=lambda c: c[0][0])
+    #     best_voting_ensemble_candidate_score_right = min(voting_ensemble_candidates_scored, key=lambda c: c[0][1])
+
+    #     best_candidate_score_left = min(best_candidate_score_left, best_voting_ensemble_candidate_score_left, key=lambda c: c[0][0])
+    #     best_candidate_score_right = min(best_candidate_score_right, best_voting_ensemble_candidate_score_right, key=lambda c: c[0][0])
+
+    #     if best_candidate_score_left[0][0] > 1.25 * np.mean(get_next_lane.best_candidate_score_left_memory) or \
+    #             best_candidate_score_right[0][1] > 1.25 * np.mean(get_next_lane.best_candidate_score_right_memory):
+
+    #         next_lane_data = previous_lane_data
+    #         use_previous = True
+            
+    # if not use_previous:
+
+    next_lane_data = lane.lane_data(
+
+        lane_height=best_candidate_score_left[1].lane_height,  # arbitrary choice, either of them work
+        lane_width=best_candidate_score_left[1].lane_width,  # same ^
+        range_poly=best_candidate_score_left[1].polyfit_range,  # same ^
+        l_poly=best_candidate_score_left[1].left_lane_polyfit_pts,
+        r_poly=best_candidate_score_right[1].right_lane_polyfit_pts,
+        l_pts=best_candidate_score_left[1].left_lane_pts,
+        r_pts=best_candidate_score_right[1].right_lane_pts,
+
+    )
+
+    next_lane_canvas = next_lane_data.draw(frame_BGR, skycutoff, hoodcutoff, debugging)
+
+    if debugging:
+
+        candidates_marked_RGB = []
+        for candidate in candidates_scored:
+
+            best_left = (candidate[1] == best_candidate_score_left[1])
+            best_right = (candidate[1] == best_candidate_score_right[1])
+
+            candidate_left = cv2.bitwise_and(candidate[2], left_lane_mask)
+            candidate_right = cv2.bitwise_and(candidate[2], right_lane_mask)
+
+            candidate_left_RGB = cv2.cvtColor(candidate_left, cv2.COLOR_GRAY2RGB)
+            candidate_right_RGB = cv2.cvtColor(candidate_right, cv2.COLOR_GRAY2RGB)
+
+            left_lane_mask_RGB = cv2.cvtColor(left_lane_mask, cv2.COLOR_GRAY2RGB)
+            right_lane_mask_RGB = cv2.cvtColor(right_lane_mask, cv2.COLOR_GRAY2RGB)
+
+            if best_left:
+                candidate_left_RGB[:, :, 0] = 0
+                candidate_left_RGB[:, :, 1] = 0
+                left_lane_mask_RGB[:, :, 0] = 0
+                left_lane_mask_RGB[:, :, 1] = 0
+
+            if best_right:
+                candidate_right_RGB[:, :, 1] = 0
+                candidate_right_RGB[:, :, 2] = 0
+                right_lane_mask_RGB[:, :, 1] = 0
+                right_lane_mask_RGB[:, :, 2] = 0
+
+            candidate_RGB = cv2.bitwise_or(candidate_left_RGB, candidate_right_RGB)
+            lane_masks_RGB = cv2.bitwise_or(left_lane_mask_RGB, right_lane_mask_RGB)
+            candidate_RGB = cv2.addWeighted(candidate_RGB, 1, lane_masks_RGB, 0.2, 0)
+
+            candidates_marked_RGB.append(candidate_RGB)
+
+        # Left score
+        frame_BGR = cv2.putText(
+
+            img=frame_BGR,
+            text=f'{best_candidate_score_left[0][0]} ({np.mean(get_next_lane.best_candidate_score_left_memory)})',
+            bottomLeftOrigin=False,  # when false, it is at the top-left corner.
+            org=(4, 16 * (np.shape(frame_BGR)[1] // 640)),
+            fontFace=cv2.FONT_HERSHEY_PLAIN,
+            fontScale=np.shape(frame_BGR)[1] // 640,
+            color=(0, 0, 255),  # BGR
+            lineType=cv2.LINE_AA
+
+        )
+
+        # Right score
+        frame_BGR = cv2.putText(
+
+            img=frame_BGR,
+            text=f'{best_candidate_score_right[0][1]} ({np.mean(get_next_lane.best_candidate_score_right_memory)})',
+            bottomLeftOrigin=False,  # when false, it is at the top-left corner.
+            org=(4, 32 * (np.shape(frame_BGR)[1] // 640)),
+            fontFace=cv2.FONT_HERSHEY_PLAIN,
+            fontScale=np.shape(frame_BGR)[1] // 640,
+            color=(255, 0, 0),  # BGR
+            lineType=cv2.LINE_AA
+
+        )
+
+        candidates_preview = cv2.vconcat(candidates_marked_RGB)
+        # cv2.imshow(
+
+        #     "Debug Mode Preview",
+        #     cv2.hconcat(
+
+        #         [
+        #             frame_BGR,
+        #             cv2.resize(
+
+        #                 candidates_preview,
+        #                 (int(np.shape(candidates_preview)[1] * (np.shape(frame_BGR)[0] / np.shape(candidates_preview)[0])),
+        #                  np.shape(frame_BGR)[0])
+
+        #             )
+        #         ]
+
+        #     )
+
+        # )
+        # cv2.waitKey(1000)
+
+    return next_lane_data, next_lane_canvas, candidates_preview if debugging else None
+
+
+def __pipeline_initial_detection(first_frame_BGR):
+
+    HOODCUTOFF, _ = prep.get_hood_cutoff(first_frame_BGR)
+    SKYCUTOFF, _, _ = prep.get_sky_cutoff(first_frame_BGR[:HOODCUTOFF], (1, 3))
+
+    _, detection_ready_frame =\
+        prep.hough_transform_raw_pre(
+            prep.edge_voting_ensemble(
+                __pipeline_preprocesses(
+                    first_frame_BGR[SKYCUTOFF:HOODCUTOFF]
+                ),
+                voting_threshold=4
+            )
+        )
 
     detected_lane_data = lane.peeking_center_detect(detection_ready_frame, 1)
 
-    lane_canvas = detected_lane_data.draw(frames_BGR[0], SKYCUTOFF, HOODCUTOFF, debugging)
+    return detected_lane_data, HOODCUTOFF, SKYCUTOFF
 
-    initial_detected_lane_frame = cv2.addWeighted(lane_canvas, 1, frames_BGR[0][:HOODCUTOFF], 1, 0)
 
-    OUTPUT_WIDTH = np.shape(initial_detected_lane_frame)[1]
-    OUTPUT_HEIGHT = np.shape(initial_detected_lane_frame)[0]
+def run_pipeline(width, height, preview_factor, input_file_path, output_folder_path, debugging):
 
-    video_output = cv2.VideoWriter(f'{output_path}/video.avi',
-                                   cv2.VideoWriter_fourcc(*"XVID"),
-                                   30, (OUTPUT_WIDTH, OUTPUT_HEIGHT))
+    if not os.path.exists(input_file_path): print(f"Sorry, the provided input path ({input_file_path}) does not exist."); return
 
-    cv2.imwrite(f'{output_path}/1.jpg', cv2.vconcat([initial_detected_lane_frame, frames_BGR[0][HOODCUTOFF:]]))
-    video_output.write(cv2.vconcat([initial_detected_lane_frame, frames_BGR[0][HOODCUTOFF:]]))
+    video_input = cv2.VideoCapture(input_file_path)
+    FRAME_COUNT = int(video_input.get(cv2.CAP_PROP_FRAME_COUNT))
+    FPS = int(video_input.get(cv2.CAP_PROP_FPS))
+    ret, first_frame_BGR = video_input.read()
+    first_frame_BGR = cv2.resize(first_frame_BGR, (width, height))
 
-    previous_lane_data = detected_lane_data
+    if not ret: print("Something went wrong reading the stream... Exiting..."); return
 
-    for index, frame_BGR in enumerate(frames_BGR[1:]):
+    print(f"Reading from ({os.path.abspath(input_file_path)})...")
+    if not os.path.exists(output_folder_path): os.makedirs(output_folder_path)
+    if not os.path.exists(f"{output_folder_path}/frames"): os.makedirs(f"{output_folder_path}/frames")
+    print(f"Saving into ({os.path.abspath(output_folder_path)})...")
 
-        current_lane_data, current_lane_canvas =\
-            get_next_lane(previous_lane_data, frame_BGR, SKYCUTOFF, HOODCUTOFF, debugging)
+    video_output = cv2.VideoWriter(f'{output_folder_path}/video.avi',
+                                   cv2.VideoWriter_fourcc(*"XVID"), FPS, (width, height))
 
-        detected_lane_frame = cv2.addWeighted(current_lane_canvas, 1, frame_BGR[:HOODCUTOFF], 1, 0)
+    initial_lane_data, HOODCUTOFF, SKYCUTOFF = __pipeline_initial_detection(first_frame_BGR)
+    initial_lane_canvas = initial_lane_data.draw(first_frame_BGR, SKYCUTOFF, HOODCUTOFF, debugging)
+    initial_lane_detection_frame = cv2.vconcat(
 
-        cv2.imwrite(f'{output_path}/{index + 2}.jpg', cv2.vconcat([detected_lane_frame, frame_BGR[HOODCUTOFF:]]))
-        video_output.write(cv2.vconcat([detected_lane_frame, frame_BGR[HOODCUTOFF:]]))
+        [
+            first_frame_BGR[:SKYCUTOFF],
+            cv2.addWeighted(initial_lane_canvas, 1, first_frame_BGR[SKYCUTOFF:HOODCUTOFF], 1, 0),
+            first_frame_BGR[HOODCUTOFF:]
+        ]
 
-        macros.printProgressBar(index + 2, len(frames_BGR), suffix=f' ({index + 2} / {len(frames_BGR)})')
+    )
 
-        previous_lane_data = current_lane_data
+    cv2.imwrite(f'{output_folder_path}/frames/0001.jpg', initial_lane_detection_frame)
+    video_output.write(initial_lane_detection_frame)
+    macros.printProgressBar(1, FRAME_COUNT, suffix=f' (0001 / {FRAME_COUNT})')
 
-    video_output.release()
-    print("\n")
+    index = 1
+    ret, frame_BGR = video_input.read()
+    previous_lane_data = initial_lane_data
+    try:
+        while(ret):
+
+            index += 1
+            frame_BGR = cv2.resize(frame_BGR, (width, height))
+
+            current_lane_data, current_lane_canvas, candidates_preview =\
+                get_next_lane(previous_lane_data, frame_BGR, SKYCUTOFF, HOODCUTOFF, debugging)
+
+            current_lane_detection_frame = cv2.vconcat(
+
+                [
+                    frame_BGR[:SKYCUTOFF],
+                    cv2.addWeighted(current_lane_canvas, 1, frame_BGR[SKYCUTOFF:HOODCUTOFF], 1, 0),
+                    frame_BGR[HOODCUTOFF:]
+                ]
+
+            )
+
+            current_lane_detection_frame = cv2.putText(
+
+                img=current_lane_detection_frame,
+                text=f'{str(index).zfill(4)} / {FRAME_COUNT}',
+                bottomLeftOrigin=False,
+                org=(4, height - 8 * (height // 360)),
+                fontFace=cv2.FONT_HERSHEY_PLAIN,
+                fontScale=height // 360,
+                color=(255, 255, 255),  # BGR
+                lineType=cv2.LINE_AA
+
+            )
+            if debugging:
+
+                debug_view = cv2.hconcat(
+
+                    [
+                        current_lane_detection_frame,
+                        cv2.resize(
+
+                            candidates_preview,
+                            (int(np.shape(candidates_preview)[1] * (np.shape(frame_BGR)[0] / np.shape(candidates_preview)[0])),
+                             np.shape(frame_BGR)[0])
+
+                        )
+                    ]
+
+                )
+
+                cv2.imshow(
+
+                    "Debug Mode Preview",
+                    cv2.resize(debug_view,
+                               [
+                                   np.shape(debug_view)[1] * preview_factor,
+                                   np.shape(debug_view)[0] * preview_factor
+                               ])
+
+                )
+                cv2.waitKey(1000)
+
+            cv2.imwrite(f'{output_folder_path}/frames/{str(index).zfill(4)}.jpg', current_lane_detection_frame)
+            video_output.write(current_lane_detection_frame)
+
+            macros.printProgressBar(index, FRAME_COUNT, suffix=f' ({str(index).zfill(4)} / {FRAME_COUNT})')
+
+            previous_lane_data = current_lane_data
+            ret, frame_BGR = video_input.read()
+
+    except KeyboardInterrupt: print("\n\nAbrupt termination requested; saving progress so far...")
+    # except Exception as e: print(f"\n\nAn error has occured! Saving what can be saved...\n\n{e.__traceback__}")
+    finally: print("\n\nExiting...\n"); video_input.release(); video_output.release()
 
 
 if __name__ == "__main__":
 
-    WIDTH = 1280 // 2
-    HEIGHT = 720 // 2
-    INPUT_PATH = "./assets/project_video.mp4"
-    OUTPUT_PATH = f"./out/{dt.datetime.now().strftime('%Y-%m-%d %H-%M-%S')}"
-    DEBUGGING_MODE = False
+    run_pipeline(
 
-    run_pipeline(WIDTH, HEIGHT, INPUT_PATH, OUTPUT_PATH, DEBUGGING_MODE)
+        width=1280 // 2,
+        height=720 // 2,
+        preview_factor=2,
+        input_file_path="./assets/harder_challenge_video.mp4",
+        output_folder_path=f"./out/{dt.datetime.now().strftime('%Y-%m-%d %H-%M-%S')}",
+        debugging=True
+
+    )
+
     # alt_pipeline(INPUT_PATH, OUTPUT_PATH)
 
 

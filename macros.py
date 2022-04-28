@@ -50,21 +50,21 @@ def grid_plot(images: Tuple[Tuple[cv2.Mat, str, str]], rows: int = 1, vertical: 
             i += 1
 
 
-def load_stream(video_path, frame_size=None):
+# def load_stream(video_path, frame_size=None):
     
-    stream = cv2.VideoCapture(video_path)
+#     stream = cv2.VideoCapture(video_path)
 
-    frame = stream.read()
-    frames = []
+#     frame = stream.read()
+#     frames = []
 
-    while(frame[0]):
-        try: frames.append(cv2.resize(frame[1], frame_size) if frame_size else frame[1])
-        except Exception as e: print(e)
-        frame = stream.read()
+#     while(frame[0]):
+#         try: frames.append(cv2.resize(frame[1], frame_size) if frame_size else frame[1])
+#         except Exception as e: print(e)
+#         frame = stream.read()
         
-    stream.release()
+#     stream.release()
 
-    return frames
+#     return frames
 
 
 def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):

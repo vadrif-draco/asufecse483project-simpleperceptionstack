@@ -299,7 +299,7 @@ def hough_transform_raw_pre(edge_image: cv2.Mat):
         for edge in edges_detected:
             cv2.line(edges_canvas, (edge[0][0], edge[0][1]), (edge[0][2], edge[0][3]), 255, 2)
     except:
-        print("No edges found...")
+        print("No edges found... Returning black canvas")
 
     return edges_detected, edges_canvas
 
