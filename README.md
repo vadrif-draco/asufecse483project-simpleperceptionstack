@@ -52,32 +52,27 @@ For consistency, the lane should be marked in green and its borders in yellow an
 
 - [x] _**~~Create repository~~ (April 16th, 2022)**_
 - [x] _**~~Create initial README.md~~ (April 23rd, 2022)**_
-- [ ] Create pipeline and test it against static image samples in assets
+- [x] _**~~Create pipeline and test it against static image samples in assets~~ (April 28th, 2022)**_
   - [x] straight_lines1.jpg Pass
   - [x] straight_lines2.jpg Pass
   - [x] test1.jpg Pass
-  - [ ] test2.jpg Pass
+  - [x] test2.jpg Pass
   - [x] test3.jpg Pass
-  - [ ] test4.jpg Pass
+  - [x] test4.jpg Pass
   - [x] test5.jpg Pass
   - [x] test6.jpg Pass
-  - [ ] Extra: test7.jpg Pass
-  - [ ] Extra: test8.jpg Pass
-  - [ ] Extra: test9.jpg Pass
-  - [x] Extra: test10.jpg Pass
-  - [ ] Extra: test11.jpg Pass
 - [ ] Test pipeline against video samples in assets
-  - [ ] project_video.mp4 Pass
-  - [ ] challenge_video.mp4 Pass
+  - [x] project_video.mp4 Pass
+  - [x] challenge_video.mp4 Pass
   - [ ] harder_challenge_video.mp4 Pass
 - [ ] Full code clean-up and documentation with debugging
   - [ ] Show the individual image/video processing steps
   - [ ] Show any relevant statistics
-- [ ] A simple bash/shell script to call python to run the code with arguments to run in debugging mode...
-  - [ ] Example cmd for normal run: `run.sh input_path output_path`
-  - [ ] Example cmd for debug run: `run.sh input_path output_path -d`
-- [ ] Demo jupyter notebook for demonstrating the features of the pipeline
-- [ ] Upload demo result images and videos
+- [x] _**~~A simple batch/shell script to call python to run the code with arguments to run in debugging mode...~~ (April 30th, 2022)**_
+  - [x] Example cmd for normal run: `pipeline_run.sh input_path output_path`
+  - [x] Example cmd for debug run: `pipeline_run.bat input_path output_path -d`
+- [x] _**~~Demo jupyter notebook for demonstrating the features of the pipeline~~ (April 27th, 2022)**_
+- [ ] Upload demo result images and videos as ssues
 - [ ] Review README.md with respect to phase 1
   - [ ] Add/update necessary information to the <a href="#getting-started">Getting Started</a> section (how to install/run the code, etc...)
   - [ ] Add/update necessary information to the <a href="#usage">Usage</a> section (how to actually play with the code)
@@ -101,7 +96,11 @@ For consistency, the lane should be marked in green and its borders in yellow an
 
 ## Phase Two Details and Requirements
 
-TBD.
+In this phase we are required to do more of a research on the topic of object detection in Computer Vision with the aid of artificial intelligence, namely machine and deep learning techniques such as CNNs, R-CNNs, ViTs, YOLO, etc.. We are also required to use YOLOv3 in object detection
+
+Like in phase 1, the object detection will be visualized with boxes surrounding the detected objects. We are only concerned with cars.
+
+Milestones are similar to those of phase 1.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

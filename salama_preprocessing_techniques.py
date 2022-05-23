@@ -68,7 +68,7 @@ def get_hood_cutoff(image_BGR: cv2.Mat):
     ]
 
 
-def get_sky_cutoff(image_BGR: cv2.Mat, sobel_blur_ksize: Tuple = None, post_sobel_threshold: Tuple = [85, 255]):
+def get_sky_cutoff(image_BGR: cv2.Mat, sobel_blur_ksize: Tuple = None, post_sobel_threshold=85):
 
     if (sobel_blur_ksize == None):
         sobel_blur_ksize = [
@@ -134,15 +134,25 @@ def __apply_thresholds(image_in_target_colorspace: cv2.Mat, thresholds: Tuple[Tu
     intermediate_outputs = []
     for threshold in thresholds:
 
-        intermediate_output = np.copy(image_in_target_colorspace)
+        # New method
 
-        for i, row in enumerate(intermediate_output):
-            for j, pixel in enumerate(row):
-                if not(pixel[0] >= threshold[0][0] and pixel[0] <= threshold[0][1] and
-                       pixel[1] >= threshold[1][0] and pixel[1] <= threshold[1][1] and
-                       pixel[2] >= threshold[2][0] and pixel[2] <= threshold[2][1]): intermediate_output[i, j] = [0, 0, 0]
+        intermediate_output_mask = cv2.inRange(image_in_target_colorspace, threshold[0], threshold[1])
 
-        intermediate_outputs.append(intermediate_output)
+        intermediate_outputs.append(cv2.bitwise_and(image_in_target_colorspace,
+                                                    image_in_target_colorspace,
+                                                    mask=intermediate_output_mask))
+
+        # Old method
+
+        # intermediate_output = np.copy(image_in_target_colorspace)
+
+        # for i, row in enumerate(intermediate_output):
+        #     for j, pixel in enumerate(row):
+        #         if not(pixel[0] >= threshold[0][0] and pixel[0] <= threshold[0][1] and
+        #                pixel[1] >= threshold[1][0] and pixel[1] <= threshold[1][1] and
+        #                pixel[2] >= threshold[2][0] and pixel[2] <= threshold[2][1]): intermediate_output[i, j] = [0, 0, 0]
+
+        # intermediate_outputs.append(intermediate_output)
 
     output = np.zeros_like(image_in_target_colorspace)
     for intermediate_output in intermediate_outputs: output = cv2.bitwise_or(output, intermediate_output)
@@ -158,18 +168,30 @@ class __lane_thresholds_colorspace:
 
 HLS_COLORSPACE_THRESH = __lane_thresholds_colorspace(thresholds=[
 
-    [(16, 26), (0, 255), (127, 255)],  # Yellows
-    [(0, 255), (224, 255), (0, 255)],  # Whites
+    # Old method format
+    # [(16, 26), (0, 255), (127, 255)],  # Yellows
+    # [(0, 255), (224, 255), (0, 255)],  # Whites
+
+    # New method format
+    [np.array([16, 0, 127], dtype=np.uint8), np.array([26, 255, 255], dtype=np.uint8)],  # Yellows
+    [np.array([0, 224, 0], dtype=np.uint8), np.array([255, 255, 255], dtype=np.uint8)],  # White
 
 ], from_BGR=cv2.COLOR_BGR2HLS, to_BGR=cv2.COLOR_HLS2BGR)
 
 
 LAB_COLORSPACE_THRESH = __lane_thresholds_colorspace(thresholds=[
 
+    # Old range old method format
     # [(80, 255), (127, 191), (127, 255)], # Yellows
     # [(223, 255), (31, 223), (31, 223)], # Whites
-    [(20, 255), (110, 159), (159, 215)],  # Yellows
-    [(239, 255), (96, 159), (96, 159)],  # Whites
+
+    # New range old method format
+    # [(20, 255), (110, 159), (159, 215)],  # Yellows
+    # [(239, 255), (96, 159), (96, 159)],  # Whites
+
+    # New range new method format
+    [np.array([20, 110, 159], dtype=np.uint8), np.array([255, 159, 215], dtype=np.uint8)],  # Yellows
+    [np.array([239, 96, 96], dtype=np.uint8), np.array([255, 159, 159], dtype=np.uint8)]  # Whites
 
 ], from_BGR=cv2.COLOR_BGR2LAB, to_BGR=cv2.COLOR_LAB2BGR)
 
@@ -182,31 +204,34 @@ def color_thresholded_edges_pre(image_BGR: cv2.Mat, colorspace: __lane_threshold
         __apply_thresholds(image_in_target_colorspace, colorspace.thresholds)
 
     return \
-    \
-        cv2.Sobel(
-            # cv2.Canny(
+        cv2.threshold(
 
-            cv2.medianBlur(
+            cv2.Sobel(
+                # cv2.Canny(
 
-                cv2.GaussianBlur(
+                cv2.medianBlur(
 
-                    cv2.cvtColor(
+                    cv2.GaussianBlur(
 
                         cv2.cvtColor(
 
-                            thresholded_frame,
-                            colorspace.to_BGR
+                            cv2.cvtColor(
 
-                        ), cv2.COLOR_BGR2GRAY
+                                thresholded_frame,
+                                colorspace.to_BGR
 
-                    ), (1 + 2 * (np.shape(thresholded_frame)[1] // 640), 1 + 2 * (np.shape(thresholded_frame)[0] // 80)), 0
+                            ), cv2.COLOR_BGR2GRAY
 
-                ), 1 + 2 * (np.shape(thresholded_frame)[1] // 640)
+                        ), (1 + 2 * (np.shape(thresholded_frame)[1] // 640), 1 + 2 * (np.shape(thresholded_frame)[0] // 80)), 0
 
-            ), cv2.CV_8U, 0, 1
-            # ), 85, 255
+                    ), 1 + 2 * (np.shape(thresholded_frame)[1] // 640)
 
-        ), thresholded_frame, intermediate_threshold_steps
+                ), cv2.CV_8U, 0, 1
+                # ), 85, 255
+
+            ), 0, 255, cv2.THRESH_BINARY
+
+        )[1], thresholded_frame, intermediate_threshold_steps
 
 
 def adaptive_thresholding_pre(image_mono: cv2.Mat, threshold_block_size: int = None, post_blur: int = 3):
@@ -222,13 +247,13 @@ def adaptive_thresholding_pre(image_mono: cv2.Mat, threshold_block_size: int = N
         ), post_blur)
 
 
-def sobel_pre(image_mono: cv2.Mat, gaussian_blur_ksize: Tuple = (5, 5), binarization_thresh: Tuple = (50, 150)):
+def sobel_pre(image_mono: cv2.Mat, gaussian_blur_ksize: Tuple = (5, 5), binarization_threshold=50):
 
     image_blur = cv2.GaussianBlur(image_mono, ksize=gaussian_blur_ksize, sigmaX=0, sigmaY=0)
     image_sobel_raw = cv2.Sobel(image_blur, cv2.CV_8U, 0, 1)
     _, image_sobel_binary = cv2.threshold(image_sobel_raw,
-                                          binarization_thresh[0],
-                                          binarization_thresh[1],
+                                          binarization_threshold,
+                                          255,
                                           cv2.THRESH_BINARY)
 
     return image_sobel_binary, image_sobel_raw
@@ -289,8 +314,8 @@ def hough_transform_raw_pre(edge_image: cv2.Mat):
         # theta=np.pi/2=90deg means every 90deg (so, vertical and horizontal)
         # so on... so the current setting np.pi/180=1deg means every degree
         threshold=np.shape(edge_image)[1] // 80,  # voting threshold
-        maxLineGap=np.shape(edge_image)[1] // 240,  # maximum length of gap
-        minLineLength=np.shape(edge_image)[1] // 40,  # minimum length of edge
+        maxLineGap=np.shape(edge_image)[1] // 320,  # maximum length of gap
+        minLineLength=np.shape(edge_image)[1] // 160,  # minimum length of edge
 
     )
 
@@ -308,18 +333,22 @@ def edge_voting_ensemble(edge_images: Tuple[cv2.Mat], voting_threshold: int):
 
     # Assert that voting threshold is less than number of images (otherwise, it will always fail, obviously)
     assert(voting_threshold <= len(edge_images))
+    
+    # Assert that voting threshold is not 0 (because that gives a trivial result of an all-white canvas)
+    assert(voting_threshold != 0)
 
     canvas = np.zeros_like(edge_images[0])
     for edge_image in edge_images:
-        canvas = np.add(canvas, edge_image // 254)
+        canvas = np.add(canvas, np.divide(edge_image, 255))
 
     # for i in range(np.shape(edge_images[0][1])):
     #     for j in range(np.shape(edge_images[0][0])):
     #         for edge_image in edge_images:
     #             canvas[i][j] += (edge_image[i][j] == 255)
 
-    for i, row in enumerate(canvas):
-        for j, pixel in enumerate(row):
-            canvas[i][j] = 255 if pixel >= voting_threshold else 0
+    # for i, row in enumerate(canvas):
+    #     for j, pixel in enumerate(row):
+    #         canvas[i][j] = 255 if pixel >= voting_threshold else 0
 
+    canvas = cv2.inRange(canvas, voting_threshold, 255)
     return canvas
